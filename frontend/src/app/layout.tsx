@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Multi Viral — AI Viral Content Engine",
-  description: "YouTube 또는 블로그 URL 하나로 LinkedIn, X, Instagram 바이럴 콘텐츠를 자동 생성합니다.",
+  title: "Multi_Viral - AI 기반 SNS 콘텐츠 생성기",
+  description: "YouTube 또는 블로그 URL 하나로 LinkedIn, X, Instagram용 바이럴 콘텐츠를 자동 생성합니다.",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ko"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
