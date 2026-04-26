@@ -1,0 +1,57 @@
+# --- 보안 (가장 중요) ---
+# API 키 및 개인 설정 파일
+.env
+.env.local
+.env.*.local
+
+# --- Python 관련 (Backend) ---
+# 가상환경
+.venv/
+venv/
+env/
+ENV/
+
+# Python 캐시 및 빌드 결과물
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- Node.js 관련 (Frontend) ---
+# 의존성 패키지
+node_modules/
+
+# Next.js 빌드 결과물 및 캐시
+.next/
+out/
+.next-env.d.ts
+
+# --- IDE 및 OS 관련 ---
+# 커서(Cursor) 및 VS Code 설정
+.cursor/
+.vscode/
+
+# 운영체제 임시 파일
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

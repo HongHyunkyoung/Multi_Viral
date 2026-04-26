@@ -1,0 +1,318 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.wf { max-width: 680px; padding: 1rem 0; font-family: var(--font-sans); }
+.section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; color: var(--color-text-tertiary); text-transform: uppercase; margin-bottom: 8px; }
+.page-frame { border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-lg); background: var(--color-background-primary); overflow: hidden; }
+.navbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.logo { font-size: 14px; font-weight: 500; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px; }
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: #378ADD; }
+.nav-badge { font-size: 11px; padding: 3px 8px; border-radius: 99px; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
+
+/* ✅ NEW: 강조된 새 URL 버튼 */
+.nav-btn-new {
+  font-size: 12px; padding: 5px 12px; border-radius: var(--border-radius-md);
+  border: 1.5px solid #378ADD;
+  color: #185FA5; background: #E6F1FB;
+  font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 4px;
+}
+
+.page-body { padding: 24px 20px; }
+.state-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 99px; margin-bottom: 16px; }
+.tag-a { background: #E6F1FB; color: #185FA5; }
+.tag-b { background: #EAF3DE; color: #3B6D11; }
+.tag-c { background: #FAEEDA; color: #854F0B; }
+.page-title { font-size: 20px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
+.page-sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 20px; line-height: 1.5; }
+
+.input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.url-input-mock { flex: 1; height: 40px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 0 12px; font-size: 13px; color: var(--color-text-tertiary); background: var(--color-background-secondary); display: flex; align-items: center; gap: 8px; }
+.paste-btn { height: 40px; padding: 0 12px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); color: var(--color-text-secondary); font-size: 12px; background: var(--color-background-secondary); display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.btn-primary { height: 40px; padding: 0 16px; border-radius: var(--border-radius-md); background: var(--color-text-primary); color: var(--color-background-primary); font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; border: none; white-space: nowrap; }
+.example-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 11px; padding: 4px 10px; border-radius: 99px; border: 0.5px solid var(--color-border-tertiary); color: var(--color-text-secondary); background: var(--color-background-secondary); }
+.chip-label { font-size: 11px; color: var(--color-text-tertiary); align-self: center; }
+
+/* Loading */
+.loading-box { margin-top: 16px; padding: 16px; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); background: var(--color-background-secondary); }
+.loading-step { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+.step-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 500; flex-shrink: 0; }
+.step-done { background: #C0DD97; color: #3B6D11; }
+.step-active { background: #FAC775; color: #854F0B; }
+.step-pending { background: var(--color-background-primary); border: 0.5px solid var(--color-border-secondary); color: var(--color-text-tertiary); }
+.step-text-done { color: var(--color-text-secondary); text-decoration: line-through; }
+.step-text-active { color: var(--color-text-primary); font-weight: 500; }
+.step-text-pending { color: var(--color-text-tertiary); }
+.pulse-dot { width: 6px; height: 6px; border-radius: 50%; background: #EF9F27; margin-left: auto; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.loading-bar-wrap { margin-top: 12px; height: 3px; border-radius: 99px; background: var(--color-border-tertiary); overflow: hidden; }
+.loading-bar { height: 100%; width: 55%; border-radius: 99px; background: #EF9F27; }
+
+/* Result */
+.result-meta { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--border-radius-md); background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); margin-bottom: 16px; }
+.meta-source { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 99px; background: #EEEDFE; color: #534AB7; }
+.meta-title { font-size: 13px; color: var(--color-text-primary); flex: 1; }
+.meta-time { font-size: 11px; color: var(--color-text-tertiary); }
+
+.tabs { display: flex; border-bottom: 0.5px solid var(--color-border-tertiary); margin-bottom: 16px; }
+.tab { padding: 8px 14px; font-size: 13px; color: var(--color-text-secondary); border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px; }
+.tab.active { color: var(--color-text-primary); border-bottom-color: var(--color-text-primary); font-weight: 500; }
+.score-pill { font-size: 10px; font-weight: 500; padding: 1px 6px; border-radius: 99px; }
+.score-high { background: #EAF3DE; color: #3B6D11; }
+.score-mid { background: #FAEEDA; color: #854F0B; }
+.score-low { background: #E6F1FB; color: #185FA5; }
+
+.reach-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: 99px; }
+.reach-viral { background: #C0DD97; color: #27500A; }
+.reach-high { background: #B5D4F4; color: #0C447C; }
+
+.platform-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 12px; }
+.card-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--color-background-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); }
+.card-platform { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.platform-icon { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.pi-li { background: #B5D4F4; color: #0C447C; }
+.pi-ig { background: #F5C4B3; color: #993C1D; }
+.copy-btn { font-size: 11px; padding: 4px 10px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); color: var(--color-text-secondary); background: var(--color-background-primary); cursor: pointer; transition: all 0.15s; }
+.copy-btn.copied { background: #EAF3DE; color: #3B6D11; border-color: #9FE1CB; }
+.card-body { padding: 12px 14px; }
+.post-preview { font-size: 12px; color: var(--color-text-primary); line-height: 1.6; margin-bottom: 12px; }
+.card-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 0.5px solid var(--color-border-tertiary); gap: 10px; flex-wrap: wrap; }
+.score-display { display: flex; align-items: center; gap: 6px; }
+.score-bar-wrap { width: 72px; height: 4px; border-radius: 99px; background: var(--color-border-tertiary); overflow: hidden; }
+.score-bar { height: 100%; border-radius: 99px; }
+.score-val { font-size: 12px; font-weight: 500; color: var(--color-text-primary); min-width: 24px; }
+.score-label { font-size: 11px; color: var(--color-text-tertiary); }
+.keywords { display: flex; gap: 4px; flex-wrap: wrap; }
+.kw { font-size: 10px; padding: 2px 7px; border-radius: 99px; background: var(--color-background-secondary); color: var(--color-text-secondary); border: 0.5px solid var(--color-border-tertiary); }
+.analysis-row { padding: 8px 12px; background: var(--color-background-secondary); border-top: 0.5px solid var(--color-border-tertiary); font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; display: flex; gap: 6px; align-items: flex-start; }
+.ai-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; background: #EEEDFE; color: #534AB7; font-weight: 500; white-space: nowrap; margin-top: 1px; }
+
+/* Carousel */
+.carousel-label { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 8px; font-weight: 500; }
+.carousel-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+.slide-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 8px 6px; background: var(--color-background-secondary); display: flex; flex-direction: column; gap: 4px; }
+.slide-num { font-size: 9px; font-weight: 500; color: var(--color-text-tertiary); }
+.slide-text { font-size: 10px; color: var(--color-text-primary); line-height: 1.4; }
+
+/* ✅ NEW: Toast — 상단 고정 (하단바/키보드 간섭 없음) */
+.toast-container {
+  position: relative; height: 0; overflow: visible;
+}
+.toast {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+  background: var(--color-text-primary); color: var(--color-background-primary);
+  font-size: 12px; padding: 7px 16px; border-radius: 99px;
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity 0.2s;
+  z-index: 10;
+}
+.toast.show { opacity: 1; }
+
+/* Annotations */
+.ann { display: flex; align-items: flex-start; gap: 6px; }
+.ann-num { width: 16px; height: 16px; border-radius: 50%; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-secondary); font-size: 10px; font-weight: 500; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+.ann-text { font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; }
+.ann-group { padding: 8px 4px 16px 4px; display: flex; flex-direction: column; gap: 6px; }
+.new-tag { display: inline-block; font-size: 9px; font-weight: 500; padding: 1px 5px; border-radius: 3px; background: #FAEEDA; color: #854F0B; margin-left: 4px; vertical-align: middle; }
+</style>
+
+<div class="wf">
+  <h2 class="sr-only">One URL Multi-Viral 와이어프레임 v3 최종 — 새 URL 버튼 강조, 토스트 위치 수정</h2>
+
+  <!-- STATE A -->
+  <p class="section-label">State A — URL 입력 (변경 없음)</p>
+  <div class="page-frame" style="margin-bottom:6px;">
+    <div class="navbar">
+      <div class="logo"><div class="logo-dot"></div>One URL, Multi-Viral</div>
+      <div class="nav-badge">Beta</div>
+    </div>
+    <div class="page-body">
+      <div class="state-tag tag-a">입력 대기</div>
+      <div class="page-title">URL 하나로 3개 플랫폼을 공략하세요</div>
+      <div class="page-sub">YouTube 또는 블로그 URL을 입력하면 LinkedIn, X, Instagram용 바이럴 콘텐츠를 자동으로 생성합니다.</div>
+      <div class="input-row">
+        <div class="url-input-mock"><span>🔗</span><span>https://youtube.com/watch?v=...</span></div>
+        <div class="paste-btn">📋 붙여넣기</div>
+        <div class="btn-primary"><span>▶</span>생성하기</div>
+      </div>
+      <div class="example-chips">
+        <span class="chip-label">예시:</span>
+        <span class="chip">YouTube 영상</span>
+        <span class="chip">기술 블로그</span>
+        <span class="chip">뉴스레터</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE C -->
+  <p class="section-label">State C — 로딩 (변경 없음)</p>
+  <div class="page-frame" style="margin-bottom:6px;">
+    <div class="navbar">
+      <div class="logo"><div class="logo-dot"></div>One URL, Multi-Viral</div>
+      <div class="nav-badge">처리 중...</div>
+    </div>
+    <div class="page-body">
+      <div class="state-tag tag-c">생성 중</div>
+      <div class="page-title">콘텐츠를 만들고 있어요</div>
+      <div class="page-sub" style="margin-bottom:0;">youtube.com/watch?v=dQw4w9WgXcQ</div>
+      <div class="loading-box">
+        <div class="loading-step"><div class="step-icon step-done">✓</div><span class="step-text-done">콘텐츠 추출 완료</span></div>
+        <div class="loading-step"><div class="step-icon step-done">✓</div><span class="step-text-done">핵심 인사이트 분석 완료</span></div>
+        <div class="loading-step"><div class="step-icon step-active">3</div><span class="step-text-active">3개 플랫폼 콘텐츠 생성 중</span><div class="pulse-dot"></div></div>
+        <div class="loading-step"><div class="step-icon step-pending">4</div><span class="step-text-pending">Viral Score 계산</span></div>
+        <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATE B: LinkedIn — 변경 포인트: 새 URL 버튼 강조 + 토스트 위치 -->
+  <p class="section-label">
+    State B — 결과 (LinkedIn 탭)
+    <span class="new-tag">NEW</span> 새 URL 버튼 강조 + 토스트 위치
+  </p>
+  <div class="page-frame" style="margin-bottom:6px; position:relative;">
+    <!-- ✅ 토스트: 카드 상단에서 나타남 (하단바 간섭 없음) -->
+    <div class="toast-container">
+      <div class="toast" id="toast-li">클립보드에 복사되었습니다</div>
+    </div>
+    <div class="navbar">
+      <div class="logo"><div class="logo-dot"></div>One URL, Multi-Viral</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="nav-badge">4.2초</div>
+        <!-- ✅ 강조된 새 URL 버튼 -->
+        <div class="nav-btn-new" onclick="alert('setResults(null) → State A로 복귀')">+ 새 URL</div>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="state-tag tag-b">결과 완료</div>
+      <div class="result-meta">
+        <span class="meta-source">YouTube</span>
+        <span class="meta-title">GPT-4o vs Claude 3.5: 실전 비교 리뷰</span>
+        <span class="meta-time">4.2s</span>
+      </div>
+      <div class="tabs">
+        <div class="tab active">
+          <div class="platform-icon pi-li" style="width:16px;height:16px;font-size:9px;">in</div>
+          LinkedIn <span class="score-pill score-high">91</span>
+        </div>
+        <div class="tab">
+          <div class="platform-icon" style="width:16px;height:16px;font-size:9px;background:#2C2C2A;color:#F1EFE8;border-radius:5px;">X</div>
+          X <span class="score-pill score-mid">87</span>
+        </div>
+        <div class="tab">
+          <div class="platform-icon pi-ig" style="width:16px;height:16px;font-size:9px;">ig</div>
+          Instagram <span class="score-pill score-low">78</span>
+        </div>
+      </div>
+      <div class="platform-card">
+        <div class="card-header">
+          <div class="card-platform">
+            <div class="platform-icon pi-li">in</div>
+            LinkedIn 포스트
+            <span class="reach-badge reach-viral">
+              <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="#3B6D11"/></svg>
+              VIRAL 예상
+            </span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="copy-btn" id="copy-li-btn" onclick="
+              this.textContent='✓ 완료!';
+              this.classList.add('copied');
+              document.getElementById('toast-li').classList.add('show');
+              setTimeout(()=>{
+                this.textContent='복사';
+                this.classList.remove('copied');
+                document.getElementById('toast-li').classList.remove('show');
+              }, 2000)
+            ">복사</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="post-preview">
+            저는 지난 6개월간 AI 도구 선택을 잘못했습니다.<br><br>
+            대부분의 개발자들이 모르는 사실: GPT-4o와 Claude 3.5의 차이는 단순한 성능이 아닙니다. 실제 업무 효율에서 3가지 핵심 차이가 존재합니다.
+          </div>
+          <div class="card-footer">
+            <div class="score-display">
+              <span class="score-label">바이럴 점수</span>
+              <div class="score-bar-wrap"><div class="score-bar" style="width:91%;background:#1D9E75;"></div></div>
+              <span class="score-val">91</span>
+            </div>
+            <div class="keywords">
+              <span class="kw">#AI전환</span><span class="kw">#커리어성장</span><span class="kw">#개발자</span>
+            </div>
+          </div>
+        </div>
+        <div class="analysis-row">
+          <span class="ai-badge">AI 분석</span>
+          <span>첫 문장의 역설적 후킹이 체류 시간을 40% 높일 것으로 예상. 수치 기반 인사이트가 LinkedIn 알고리즘 우선 배포에 유리합니다.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ann-group">
+    <div class="ann"><div class="ann-num">1</div><div class="ann-text">"+ 새 URL" 버튼 — 1.5px 파란 테두리 + 파란 배경으로 강조. 네이게이션 바 우측에 항상 노출되어 반복 사용 유도.</div></div>
+    <div class="ann"><div class="ann-num">2</div><div class="ann-text">토스트 위치 변경 — 하단 → 카드 상단. 모바일 키보드·하단 내비바 간섭 완전 제거. 복사 버튼 클릭해서 직접 확인 가능.</div></div>
+  </div>
+
+  <!-- STATE B: Instagram (변경 없음, 참고용) -->
+  <p class="section-label">State B — 결과 (Instagram 탭, 변경 없음)</p>
+  <div class="page-frame" style="margin-bottom:6px; position:relative;">
+    <div class="toast-container">
+      <div class="toast" id="toast-ig">클립보드에 복사되었습니다</div>
+    </div>
+    <div class="navbar">
+      <div class="logo"><div class="logo-dot"></div>One URL, Multi-Viral</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="nav-badge">4.2초</div>
+        <div class="nav-btn-new">+ 새 URL</div>
+      </div>
+    </div>
+    <div class="page-body">
+      <div class="tabs" style="margin-bottom:16px;">
+        <div class="tab"><div class="platform-icon pi-li" style="width:16px;height:16px;font-size:9px;">in</div>LinkedIn <span class="score-pill score-high">91</span></div>
+        <div class="tab"><div class="platform-icon" style="width:16px;height:16px;font-size:9px;background:#2C2C2A;color:#F1EFE8;border-radius:5px;">X</div>X <span class="score-pill score-mid">87</span></div>
+        <div class="tab active"><div class="platform-icon pi-ig" style="width:16px;height:16px;font-size:9px;">ig</div>Instagram <span class="score-pill score-low">78</span></div>
+      </div>
+      <div class="platform-card">
+        <div class="card-header">
+          <div class="card-platform">
+            <div class="platform-icon pi-ig">ig</div>
+            Instagram 캡션
+            <span class="reach-badge reach-high"><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3" fill="#185FA5"/></svg>HIGH 예상</span>
+          </div>
+          <button class="copy-btn" onclick="
+            this.textContent='✓ 완료!'; this.classList.add('copied');
+            document.getElementById('toast-ig').classList.add('show');
+            setTimeout(()=>{ this.textContent='복사'; this.classList.remove('copied'); document.getElementById('toast-ig').classList.remove('show'); },2000)
+          ">복사</button>
+        </div>
+        <div class="card-body">
+          <div class="post-preview">이거 모르면 손해 보는 AI 꿀팁 5가지 📌<br><br>개발자들이 GPT-4o vs Claude를 비교할 때 놓치는 것들. 저장하고 나중에 써먹으세요 🔖</div>
+          <div style="margin-bottom:12px;">
+            <div class="carousel-label">캐러셀 슬라이드 (5장)</div>
+            <div class="carousel-grid">
+              <div class="slide-card"><div class="slide-num">슬라이드 1</div><div class="slide-text">GPT-4o vs Claude 차이점 총정리</div></div>
+              <div class="slide-card"><div class="slide-num">슬라이드 2</div><div class="slide-text">코딩엔 Claude가 3배 빠른 이유</div></div>
+              <div class="slide-card"><div class="slide-num">슬라이드 3</div><div class="slide-text">창작은 GPT-4o가 강한 이유</div></div>
+              <div class="slide-card"><div class="slide-num">슬라이드 4</div><div class="slide-text">비용 대비 효율 비교표</div></div>
+              <div class="slide-card"><div class="slide-num">슬라이드 5</div><div class="slide-text">나에게 맞는 AI 고르는 법</div></div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="score-display">
+              <span class="score-label">바이럴 점수</span>
+              <div class="score-bar-wrap"><div class="score-bar" style="width:78%;background:#378ADD;"></div></div>
+              <span class="score-val">78</span>
+            </div>
+            <div class="keywords"><span class="kw">#저장필수</span><span class="kw">#AI꿀팁</span><span class="kw">#개발자</span></div>
+          </div>
+        </div>
+        <div class="analysis-row">
+          <span class="ai-badge">AI 분석</span>
+          <span>저장 유도 CTA + 5장 캐러셀 구조가 Instagram 알고리즘 우선 노출에 유리. 슬라이드별 핵심 한 줄 텍스트가 완독률을 높입니다.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
