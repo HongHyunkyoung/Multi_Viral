@@ -62,6 +62,39 @@ function scorePill(score: number) {
   return "bg-sky-50 text-sky-700 ring-1 ring-sky-200";
 }
 
+function CircularScore({ score }: { score: number }) {
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.min(100, Math.max(0, score));
+  const progress = (clamped / 100) * circumference;
+  const color = score >= 80 ? "#10b981" : score >= 65 ? "#f59e0b" : "#38bdf8";
+  const label = score >= 80 ? "높은 확산력" : score >= 65 ? "보통 확산력" : "기본 확산력";
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="relative w-12 h-12 shrink-0">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r={radius} fill="none" stroke="#e4e4e7" strokeWidth="4" />
+          <circle
+            cx="24" cy="24" r={radius} fill="none"
+            stroke={color} strokeWidth="4"
+            strokeDasharray={`${progress} ${circumference}`}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dasharray 0.6s ease" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-xs font-bold text-zinc-900">{score}</span>
+        </div>
+      </div>
+      <div>
+        <div className="text-xs font-semibold text-zinc-700">바이럴 점수</div>
+        <div className="text-[11px] text-zinc-500 mt-0.5">{label}</div>
+      </div>
+    </div>
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const btnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -149,13 +182,7 @@ function PlatformCard({
         {extra ? <div className="mt-4">{extra}</div> : null}
 
         <div className="mt-4 pt-3 border-t border-zinc-200 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-zinc-500">바이럴 점수</span>
-            <div className="h-1.5 w-24 rounded-full bg-zinc-200 overflow-hidden">
-              <div className={["h-full rounded-full", scoreColor(viralScore)].join(" ")} style={{ width: `${Math.min(100, Math.max(0, viralScore))}%` }} />
-            </div>
-            <span className="text-sm font-semibold text-zinc-900 w-8 text-right">{viralScore}</span>
-          </div>
+          <CircularScore score={viralScore} />
           <div className="flex flex-wrap gap-1.5">
             {(keywords || []).slice(0, 10).map((k) => (
               <span key={k} className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-50 text-zinc-700 border border-zinc-200">
@@ -218,6 +245,7 @@ function LoadingBox({ step, hasResults }: { step: Step; hasResults: boolean }) {
 
 export default function Page() {
   const [url, setUrl] = useState("");
+  const [activeTab, setActiveTab] = useState<"linkedin" | "twitter" | "instagram">("linkedin");
   const [step, setStep] = useState<Step>("idle");
   const [results, setResults] = useState<GenerateResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
@@ -303,6 +331,7 @@ export default function Page() {
     setResults(null);
     setErrorMsg("");
     setStep("idle");
+    setActiveTab("linkedin");
   }
 
   const linkedinScore = results?.platform_posts.linkedin?.viral_score ?? 0;
@@ -443,79 +472,86 @@ export default function Page() {
                   <div className="text-[11px] text-zinc-500">{(results.processing_time_ms / 1000).toFixed(1)}s</div>
                 </div>
 
-                {/* Tabs without extra useState (radio) */}
-                <div className="border-b border-zinc-200 mb-4 flex gap-4 text-sm">
-                  <label className="py-2 cursor-pointer">
-                    <input type="radio" name="tab" defaultChecked className="peer sr-only" />
-                    <span className="inline-flex items-center gap-2 text-zinc-600 peer-checked:text-zinc-900 peer-checked:font-semibold">
-                      LinkedIn
-                      <span className={["text-[11px] px-2 py-0.5 rounded-full", scorePill(linkedinScore)].join(" ")}>{linkedinScore}</span>
-                    </span>
-                  </label>
-                  <label className="py-2 cursor-pointer">
-                    <input type="radio" name="tab" className="peer sr-only" />
-                    <span className="inline-flex items-center gap-2 text-zinc-600 peer-checked:text-zinc-900 peer-checked:font-semibold">
-                      X
-                      <span className={["text-[11px] px-2 py-0.5 rounded-full", scorePill(twitterScore)].join(" ")}>{twitterScore}</span>
-                    </span>
-                  </label>
-                  <label className="py-2 cursor-pointer">
-                    <input type="radio" name="tab" className="peer sr-only" />
-                    <span className="inline-flex items-center gap-2 text-zinc-600 peer-checked:text-zinc-900 peer-checked:font-semibold">
-                      Instagram
-                      <span className={["text-[11px] px-2 py-0.5 rounded-full", scorePill(instagramScore)].join(" ")}>{instagramScore}</span>
-                    </span>
-                  </label>
+                {/* 탭 — useState 기반 */}
+                <div className="border-b border-zinc-200 mb-4 flex gap-0 text-sm">
+                  {(
+                    [
+                      { key: "linkedin",  label: "LinkedIn",  score: linkedinScore  },
+                      { key: "twitter",   label: "X",         score: twitterScore   },
+                      { key: "instagram", label: "Instagram", score: instagramScore },
+                    ] as const
+                  ).map(({ key, label, score }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setActiveTab(key)}
+                      className={[
+                        "inline-flex items-center gap-2 px-4 py-2.5 border-b-2 transition-colors font-medium",
+                        activeTab === key
+                          ? "border-zinc-900 text-zinc-900"
+                          : "border-transparent text-zinc-400 hover:text-zinc-600 hover:border-zinc-300",
+                      ].join(" ")}
+                    >
+                      {label}
+                      <span className={["text-[11px] px-2 py-0.5 rounded-full", scorePill(score)].join(" ")}>
+                        {score}
+                      </span>
+                    </button>
+                  ))}
                 </div>
 
-                {/* Panels (simple vertical stack; show all with headings to avoid extra state) */}
-                <div className="grid gap-4">
-                  <PlatformCard
-                    platform="linkedin"
-                    title="LinkedIn 포스트"
-                    reach={results.platform_posts.linkedin.estimated_reach}
-                    viralScore={results.platform_posts.linkedin.viral_score}
-                    keywords={results.platform_posts.linkedin.keywords}
-                    analysis={results.platform_posts.linkedin.analysis}
-                    bodyText={results.platform_posts.linkedin.post}
-                  />
-
-                  <PlatformCard
-                    platform="twitter"
-                    title="X 스레드"
-                    reach={results.platform_posts.twitter.estimated_reach}
-                    viralScore={results.platform_posts.twitter.viral_score}
-                    keywords={results.platform_posts.twitter.keywords}
-                    analysis={results.platform_posts.twitter.analysis}
-                    bodyText={results.platform_posts.twitter.thread.join("\n\n")}
-                  />
-
-                  <PlatformCard
-                    platform="instagram"
-                    title="Instagram 캡션"
-                    reach={results.platform_posts.instagram.estimated_reach}
-                    viralScore={results.platform_posts.instagram.viral_score}
-                    keywords={results.platform_posts.instagram.keywords}
-                    analysis={results.platform_posts.instagram.analysis}
-                    bodyText={[
-                      results.platform_posts.instagram.caption,
-                      "",
-                      ...(results.platform_posts.instagram.hashtags || []),
-                    ].join("\n")}
-                    extra={
-                      <div>
-                        <div className="text-xs font-semibold text-zinc-500 mb-2">캐러셀 슬라이드 (5장)</div>
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                          {(results.platform_posts.instagram.carousel_slides || []).slice(0, 5).map((t, idx) => (
-                            <div key={idx} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2">
-                              <div className="text-[10px] font-semibold text-zinc-500">슬라이드 {idx + 1}</div>
-                              <div className="mt-1 text-xs text-zinc-900 leading-5 break-words">{t}</div>
-                            </div>
-                          ))}
+                {/* 활성 탭 패널만 렌더링 */}
+                <div>
+                  {activeTab === "linkedin" && (
+                    <PlatformCard
+                      platform="linkedin"
+                      title="LinkedIn 포스트"
+                      reach={results.platform_posts.linkedin.estimated_reach}
+                      viralScore={results.platform_posts.linkedin.viral_score}
+                      keywords={results.platform_posts.linkedin.keywords}
+                      analysis={results.platform_posts.linkedin.analysis}
+                      bodyText={results.platform_posts.linkedin.post}
+                    />
+                  )}
+                  {activeTab === "twitter" && (
+                    <PlatformCard
+                      platform="twitter"
+                      title="X 스레드"
+                      reach={results.platform_posts.twitter.estimated_reach}
+                      viralScore={results.platform_posts.twitter.viral_score}
+                      keywords={results.platform_posts.twitter.keywords}
+                      analysis={results.platform_posts.twitter.analysis}
+                      bodyText={results.platform_posts.twitter.thread.join("\n\n")}
+                    />
+                  )}
+                  {activeTab === "instagram" && (
+                    <PlatformCard
+                      platform="instagram"
+                      title="Instagram 캡션"
+                      reach={results.platform_posts.instagram.estimated_reach}
+                      viralScore={results.platform_posts.instagram.viral_score}
+                      keywords={results.platform_posts.instagram.keywords}
+                      analysis={results.platform_posts.instagram.analysis}
+                      bodyText={[
+                        results.platform_posts.instagram.caption,
+                        "",
+                        ...(results.platform_posts.instagram.hashtags || []),
+                      ].join("\n")}
+                      extra={
+                        <div>
+                          <div className="text-xs font-semibold text-zinc-500 mb-2">캐러셀 슬라이드 (5장)</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                            {(results.platform_posts.instagram.carousel_slides || []).slice(0, 5).map((t, idx) => (
+                              <div key={idx} className="rounded-lg border border-zinc-200 bg-zinc-50 p-2">
+                                <div className="text-[10px] font-semibold text-zinc-500">슬라이드 {idx + 1}</div>
+                                <div className="mt-1 text-xs text-zinc-900 leading-5 break-words">{t}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    }
-                  />
+                      }
+                    />
+                  )}
                 </div>
               </>
             ) : null}
