@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import time
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-# chains 모듈 import 전에 .env 로드 (Anthropic 클라이언트 초기화 시점에 키 필요)
+# chains 모듈 import 전에 .env 로드
 load_dotenv(dotenv_path=Path(__file__).with_name(".env"))
 
 from fastapi import FastAPI, HTTPException
@@ -22,8 +23,6 @@ from chains import run_chain
 from extractor import extract_content
 
 app = FastAPI()
-
-import os
 
 _raw = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
 _origins = [o.strip() for o in _raw.split(",") if o.strip()]
@@ -75,7 +74,7 @@ def generate(payload: GenerateRequest) -> dict:
     try:
         chain_result = run_chain(raw_content)
     except Exception as e:
-        raise HTTPException(status_code=500, detail={"error": "CLAUDE_FAILED", "message": str(e)}) from e
+        raise HTTPException(status_code=500, detail={"error": "GEMINI_FAILED", "message": str(e)}) from e
 
     platform_posts = chain_result["platform_posts"]
 
