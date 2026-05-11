@@ -2,21 +2,51 @@ from __future__ import annotations
 
 import re
 
+<<<<<<< HEAD
 try:
     from newspaper import Article
     HAS_NEWSPAPER = True
 except ImportError:
     HAS_NEWSPAPER = False
 
+=======
+import requests
+from bs4 import BeautifulSoup
+from newspaper import Article
+>>>>>>> bc1b2e96a9e6372f937d1643bcb7db5ae6c82540
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
+
+_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
 
 def extract_content(url: str) -> tuple[str, str]:
     """Returns (source_type, content_text)."""
     if "youtube.com" in url or "youtu.be" in url:
         return "youtube", extract_youtube(url)
+    if "blog.naver.com" in url:
+        return "blog", extract_naver_blog(url)
     return "blog", extract_blog(url)
+
+
+def extract_naver_blog(url: str) -> str:
+    # blog.naver.com/userid/postno → m.blog.naver.com/userid/postno
+    mobile_url = url.replace("://blog.naver.com", "://m.blog.naver.com")
+    try:
+        resp = requests.get(mobile_url, headers=_HEADERS, timeout=10)
+        resp.raise_for_status()
+    except Exception as e:
+        raise ValueError("네이버 블로그를 가져올 수 없습니다.") from e
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    container = soup.find(class_="se-main-container") or soup.find(class_="post-view")
+    if not container:
+        raise ValueError("본문을 추출할 수 없는 페이지입니다.")
+
+    text = container.get_text(separator="\n").strip()
+    if len(text) < 100:
+        raise ValueError("본문을 추출할 수 없는 페이지입니다.")
+    return text[:2500]
 
 
 def extract_youtube(url: str) -> str:
@@ -48,8 +78,12 @@ def extract_youtube(url: str) -> str:
              raise ValueError("YouTube에서 요청이 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.") from e
         raise ValueError(f"자막을 가져올 수 없습니다: {error_msg}") from e
 
+<<<<<<< HEAD
     # t가 객체일 수도 있고 딕셔너리일 수도 있으므로 안전하게 처리
     return " ".join(t.get("text", "") if isinstance(t, dict) else getattr(t, "text", "") for t in transcript).strip()[:4000]
+=======
+    return " ".join(t.text for t in transcript).strip()[:2500]
+>>>>>>> bc1b2e96a9e6372f937d1643bcb7db5ae6c82540
 
 
 def extract_blog(url: str) -> str:
@@ -65,6 +99,12 @@ def extract_blog(url: str) -> str:
     
     text = (article.text or "").strip()
     if not text or len(text) < 100:
+<<<<<<< HEAD
         raise ValueError("본문을 충분히 추출할 수 없는 페이지입니다. (최소 100자 이상 필요)")
     
     return text[:4000]
+=======
+        raise ValueError("본문을 추출할 수 없는 페이지입니다.")
+    return text[:2500]
+
+>>>>>>> bc1b2e96a9e6372f937d1643bcb7db5ae6c82540
