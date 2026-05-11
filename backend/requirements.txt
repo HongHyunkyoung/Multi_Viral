@@ -10,3 +10,4 @@ lxml==5.2.2
 lxml_html_clean==0.4.4
 python-dotenv==1.0.1
 json_repair==0.59.5
+google-generativeai==0.8.6

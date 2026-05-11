@@ -413,7 +413,10 @@ export default function Page() {
     abortRef.current?.abort();
   }, []);
 
-  const apiBase  = useMemo(() => process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000", []);
+  const apiBase  = useMemo(() => {
+    let url = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    return url.endsWith("/") ? url.slice(0, -1) : url;
+  }, []);
   const isLoading = step !== "idle" && step !== "done" && step !== "error";
   const hasResultsDuringGenerating = step === "generating" && results !== null;
 
@@ -443,7 +446,17 @@ export default function Page() {
         signal: controller.signal,
       });
       const data = await res.json().catch(() => null);
-      if (!res.ok) { setErrorMsg(data?.detail?.message || "요청에 실패했습니다."); setStep("error"); return; }
+      if (!res.ok) {
+        let msg = "요청에 실패했습니다.";
+        if (data?.detail) {
+          if (typeof data.detail === "string") msg = data.detail;
+          else if (data.detail.message) msg = data.detail.message;
+          else if (Array.isArray(data.detail)) msg = data.detail.map((err: any) => err.msg).join(", ");
+        }
+        setErrorMsg(msg);
+        setStep("error");
+        return;
+      }
 
       setResults(data as GenerateResponse);
       finalizeTimerRef.current = window.setTimeout(() => setStep("done"), 2000);
