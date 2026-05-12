@@ -100,37 +100,62 @@ def extract_naver_news(url: str) -> str:
     return text[:4000]
 
 
+import os
+
 def extract_youtube(url: str) -> str:
     video_id_match = re.search(r"v=([^&]+)", url) or re.search(r"youtu\.be/([^?]+)", url)
     if not video_id_match:
         raise ValueError("올바른 YouTube URL이 아닙니다.")
     
     vid = video_id_match.group(1)
-    api = YouTubeTranscriptApi()
+    
+    # 1. RapidAPI 시도 (배포 환경 권장)
+    api_key = os.getenv("RAPIDAPI_KEY")
+    if api_key:
+        rapid_url = "https://youtube-transcriptor.p.rapidapi.com/transcript"
+        headers = {
+            "x-rapidapi-key": api_key,
+            "x-rapidapi-host": "youtube-transcriptor.p.rapidapi.com",
+            "Content-Type": "application/json"
+        }
+        
+        # 한국어 -> 영어 순으로 시도
+        for lang in ["ko", "en"]:
+            try:
+                resp = requests.get(rapid_url, headers=headers, params={"video_id": vid, "lang": lang}, timeout=15)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list) and len(data) > 0:
+                        return " ".join(item.get("text", "") for item in data).strip()[:4000]
+            except Exception:
+                continue
+
+    # 2. 기존 라이브러리 방식 (로컬 환경 또는 API 키 없을 때 폴백)
+    proxy_url = os.getenv("YOUTUBE_PROXY")
+    cookies_path = os.getenv("YOUTUBE_COOKIES_PATH")
+    proxies = {"https": proxy_url} if proxy_url else None
     
     try:
-        # 1. ko, en 순서로 자막 시도
         try:
-            transcript = api.fetch(vid, languages=["ko", "en"])
-        except (NoTranscriptFound, TranscriptsDisabled):
-            # 2. ko/en 없으면 사용 가능한 첫 번째 언어로 폴백
-            tlist = api.list(vid)
-            first = next(iter(tlist))
-            transcript = api.fetch(vid, languages=[first.language_code])
+            transcript = YouTubeTranscriptApi.get_transcript(vid, languages=["ko", "en"], proxies=proxies, cookies=cookies_path)
+        except (NoTranscriptFound, TranscriptsDisabled, Exception):
+            tlist = YouTubeTranscriptApi.list_transcripts(vid)
+            try:
+                transcript = tlist.find_transcript(['ko', 'en']).fetch()
+            except Exception:
+                transcript = next(iter(tlist)).fetch()
             
-    except TranscriptsDisabled as e:
-        raise ValueError("자막이 비활성화된 영상입니다.") from e
-    except NoTranscriptFound as e:
-        raise ValueError("자막이 없는 영상입니다. 자막이 있는 영상 URL을 입력해주세요.") from e
     except Exception as e:
-        # YouTube 차단(IP Block) 등의 사유 포함
         error_msg = str(e)
-        if "Too Many Requests" in error_msg:
-             raise ValueError("YouTube에서 요청이 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.") from e
+        if "blocking requests from your IP" in error_msg or "Too Many Requests" in error_msg:
+             raise ValueError(
+                 "유튜브에서 서버 IP를 차단했습니다. \n"
+                 "1. Render 설정에서 RAPIDAPI_KEY를 설정하거나, \n"
+                 "2. 서버 대신 로컬 환경에서 실행해 주세요."
+             ) from e
         raise ValueError(f"자막을 가져올 수 없습니다: {error_msg}") from e
 
-    # t가 객체일 수도 있고 딕셔너리일 수도 있으므로 안전하게 처리
-    return " ".join(t.get("text", "") if isinstance(t, dict) else getattr(t, "text", "") for t in transcript).strip()[:4000]
+    return " ".join(t.get("text", "") for t in transcript).strip()[:4000]
 
 
 def extract_blog(url: str) -> str:
