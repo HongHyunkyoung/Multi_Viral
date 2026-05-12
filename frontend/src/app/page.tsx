@@ -160,7 +160,10 @@ function PlatformCard({
   const [isEditing, setIsEditing] = useState(false);
   const [editedText, setEditedText] = useState(cleaned);
 
-  const displayText = isEditing ? editedText : cleaned;
+  // 새로운 결과가 들어오면 편집 중인 텍스트 초기화
+  useEffect(() => {
+    setEditedText(cleaned);
+  }, [cleaned]);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -185,7 +188,7 @@ function PlatformCard({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => { setIsEditing((v) => !v); if (isEditing) setEditedText(editedText); }}
+            onClick={() => setIsEditing((v) => !v)}
             className={["text-xs px-3 py-1.5 rounded-full border font-medium transition-all",
               isEditing
                 ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
@@ -194,7 +197,7 @@ function PlatformCard({
           >
             {isEditing ? "✓ 완료" : "✏️ 수정"}
           </button>
-          <CopyButton text={displayText} />
+          <CopyButton text={editedText} />
         </div>
       </div>
 
@@ -207,7 +210,7 @@ function PlatformCard({
             className="w-full min-h-[200px] resize-y rounded-xl border border-indigo-200 bg-indigo-50/30 p-3 text-sm leading-7 text-slate-800 outline-none focus:ring-2 focus:ring-indigo-300 transition-all font-sans"
           />
         ) : (
-          <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-800 font-sans">{cleaned}</pre>
+          <pre className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-800 font-sans">{editedText}</pre>
         )}
 
         {extra && !isEditing ? <div className="mt-5">{extra}</div> : null}
@@ -655,8 +658,8 @@ export default function Page() {
               ))}
             </div>
 
-            {/* 3. 활성 탭 콘텐츠 카드 */}
-            {activeTab === "linkedin" && (
+            {/* 3. 플랫폼별 콘텐츠 카드 (상태 유지를 위해 hidden 처리) */}
+            <div className={activeTab !== "linkedin" ? "hidden" : "block"}>
               <PlatformCard
                 platform="linkedin"
                 reach={results.platform_posts.linkedin.estimated_reach}
@@ -665,8 +668,8 @@ export default function Page() {
                 analysis={results.platform_posts.linkedin.analysis}
                 bodyText={results.platform_posts.linkedin.post}
               />
-            )}
-            {activeTab === "twitter" && (
+            </div>
+            <div className={activeTab !== "twitter" ? "hidden" : "block"}>
               <PlatformCard
                 platform="twitter"
                 reach={results.platform_posts.twitter.estimated_reach}
@@ -675,8 +678,8 @@ export default function Page() {
                 analysis={results.platform_posts.twitter.analysis}
                 bodyText={results.platform_posts.twitter.thread.join("\n\n")}
               />
-            )}
-            {activeTab === "instagram" && (
+            </div>
+            <div className={activeTab !== "instagram" ? "hidden" : "block"}>
               <PlatformCard
                 platform="instagram"
                 reach={results.platform_posts.instagram.estimated_reach}
@@ -702,7 +705,7 @@ export default function Page() {
                   </div>
                 }
               />
-            )}
+            </div>
           </div>
         )}
       </main>
