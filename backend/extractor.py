@@ -27,6 +27,8 @@ def extract_content(url: str) -> tuple[str, str]:
         return "youtube", extract_youtube(url)
     if "blog.naver.com" in url:
         return "blog", extract_naver_blog(url)
+    if "news.naver.com" in url or "n.news.naver.com" in url:
+        return "blog", extract_naver_news(url)
     return "blog", extract_blog(url)
 
 
@@ -47,6 +49,54 @@ def extract_naver_blog(url: str) -> str:
     text = container.get_text(separator="\n").strip()
     if len(text) < 100:
         raise ValueError("본문을 추출할 수 없는 페이지입니다.")
+    return text[:4000]
+
+
+def extract_naver_news(url: str) -> str:
+    try:
+        # 네이버 뉴스는 모바일 페이지가 추출이 더 쉬운 경우가 많음
+        target_url = url
+        if "news.naver.com" in url and "m.news.naver.com" not in url and "n.news.naver.com" not in url:
+            target_url = url.replace("news.naver.com", "n.news.naver.com")
+
+        resp = requests.get(target_url, headers=_HEADERS, timeout=20)
+        resp.raise_for_status()
+    except Exception:
+        return extract_blog(url)
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    
+    # 네이버 뉴스 주요 본문 컨테이너 (다양한 레이아웃 대응)
+    container = (
+        soup.select_one("#dic_area") or 
+        soup.select_one("#articleBodyContents") or 
+        soup.select_one("#articeBody") or
+        soup.select_one("#newsct_article") or
+        soup.select_one(".article_body") or
+        soup.select_one(".news_end")
+    )
+    
+    if not container:
+        # 일반적인 newspaper3k로 폴백
+        return extract_blog(url)
+
+    # 불필요한 요소 제거 (광고, 기자정보, 관련뉴스, 비디오 레이어 등)
+    for extra in container.select("""
+        .end_photo_org, .ext_video_area, .footer_btn, .byline, 
+        .guide_categorization, .copyright, .ad_area, .view_editor,
+        script, style, iframe, .go_trans
+    """):
+        extra.decompose()
+
+    text = container.get_text(separator="\n").strip()
+    
+    # 추출된 텍스트가 너무 적으면 newspaper3k 시도
+    if len(text) < 100:
+        fallback_text = extract_blog(url)
+        # newspaper3k의 결과가 더 좋으면 그것을 반환
+        if len(fallback_text) > len(text):
+            return fallback_text
+        
     return text[:4000]
 
 
