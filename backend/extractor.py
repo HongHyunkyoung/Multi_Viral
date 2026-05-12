@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import re
+import time
 import requests
 from bs4 import BeautifulSoup
 
 try:
-    from newspaper import Article
+    from newspaper import Article, Config
     HAS_NEWSPAPER = True
 except ImportError:
     HAS_NEWSPAPER = False
@@ -13,7 +14,11 @@ except ImportError:
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
 
-_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+}
 
 
 def extract_content(url: str) -> tuple[str, str]:
@@ -29,7 +34,7 @@ def extract_naver_blog(url: str) -> str:
     # blog.naver.com/userid/postno → m.blog.naver.com/userid/postno
     mobile_url = url.replace("://blog.naver.com", "://m.blog.naver.com")
     try:
-        resp = requests.get(mobile_url, headers=_HEADERS, timeout=10)
+        resp = requests.get(mobile_url, headers=_HEADERS, timeout=20)
         resp.raise_for_status()
     except Exception as e:
         raise ValueError("네이버 블로그를 가져올 수 없습니다.") from e
@@ -82,12 +87,22 @@ def extract_blog(url: str) -> str:
     if not HAS_NEWSPAPER:
         return f"현재 환경에서 블로그 추출 라이브러리(newspaper3k)를 사용할 수 없습니다. URL: {url}"
 
-    article = Article(url, language="ko")
+    config = Config()
+    config.browser_user_agent = _HEADERS["User-Agent"]
+    config.request_timeout = 20  # 기본 7초에서 20초로 연장
+    
+    article = Article(url, config=config, language="ko")
     try:
         article.download()
         article.parse()
     except Exception as e:
-        raise ValueError(f"블로그 콘텐츠를 가져올 수 없습니다: {str(e)}") from e
+        # 1회 재시도 (간혹 발생하는 일시적 타임아웃 대응)
+        try:
+            time.sleep(1)
+            article.download()
+            article.parse()
+        except Exception:
+            raise ValueError(f"블로그 콘텐츠를 가져올 수 없습니다: {str(e)}") from e
     
     text = (article.text or "").strip()
     if not text or len(text) < 100:
