@@ -131,19 +131,21 @@ def extract_youtube(url: str) -> str:
                 continue
 
     # 2. 기존 라이브러리 방식 (로컬 환경 또는 API 키 없을 때 폴백)
-    proxy_url = os.getenv("YOUTUBE_PROXY")
-    cookies_path = os.getenv("YOUTUBE_COOKIES_PATH")
-    proxies = {"https": proxy_url} if proxy_url else None
+    _api = YouTubeTranscriptApi()  # 신버전: 인스턴스 생성 필요
     
     try:
         try:
-            transcript = YouTubeTranscriptApi.get_transcript(vid, languages=["ko", "en"], proxies=proxies, cookies=cookies_path)
-        except (NoTranscriptFound, TranscriptsDisabled, Exception):
-            tlist = YouTubeTranscriptApi.list_transcripts(vid)
+            # 신버전: 인스턴스 메서드로 호출, video_id 키워드 인자 사용
+            transcript = _api.fetch(video_id=vid, languages=["ko", "en"])
+        except Exception:
             try:
-                transcript = tlist.find_transcript(['ko', 'en']).fetch()
+                t_list = _api.list(video_id=vid)
+                try:
+                    transcript = t_list.find_transcript(['ko', 'en']).fetch()
+                except Exception:
+                    transcript = next(iter(t_list)).fetch()
             except Exception:
-                transcript = next(iter(tlist)).fetch()
+                raise ValueError("사용 가능한 자막이 영상에 없습니다.")
             
     except Exception as e:
         error_msg = str(e)
@@ -155,7 +157,13 @@ def extract_youtube(url: str) -> str:
              ) from e
         raise ValueError(f"자막을 가져올 수 없습니다: {error_msg}") from e
 
-    return " ".join(t.get("text", "") for t in transcript).strip()[:4000]
+    # 신버전은 FetchedTranscript 객체(t.text), 구버전은 dict(t["text"]) 모두 처리
+    def _snippet_text(t) -> str:
+        if hasattr(t, "text"):
+            return t.text
+        return t.get("text", "")
+
+    return " ".join(_snippet_text(t) for t in transcript).strip()[:4000]
 
 
 def extract_blog(url: str) -> str:

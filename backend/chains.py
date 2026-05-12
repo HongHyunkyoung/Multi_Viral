@@ -7,21 +7,31 @@ import time
 from pathlib import Path
 from typing import Any
 
-import google.generativeai as genai
+import google.genai as genai
+from google.genai import types as genai_types
 from dotenv import load_dotenv
 from json_repair import repair_json
 
 # .env 로드
 load_dotenv(dotenv_path=Path(__file__).with_name(".env"))
 
-# Gemini 설정
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("Gemini_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Gemini 설정 (여러 키 로드 및 로테이션)
+API_KEYS = []
+for i in range(1, 6):  # 최대 5개까지 지원
+    key = os.getenv(f"GEMINI_API_KEY_{i}") or (os.getenv("GEMINI_API_KEY") if i == 1 else None)
+    if key:
+        API_KEYS.append(key)
 
-# 모델 설정
-MODEL_NAME = "gemini-2.5-flash" 
-FALLBACK_MODEL = "gemini-flash-latest"
+if not API_KEYS:
+    print("WARNING: No Gemini API keys found in .env")
+
+# 초기 클라이언트 생성
+current_key_index = 0
+_client = genai.Client(api_key=API_KEYS[0]) if API_KEYS else None
+
+# 모델 설정 (google.genai 신버전 기준 사용 가능한 모델명)
+MODEL_NAME = "gemini-2.5-flash"
+FALLBACK_MODEL = "gemini-2.0-flash"
 
 
 _JSON_ONLY = "순수한 JSON 객체만 출력하세요. 설명·주석·마크다운 코드블록을 절대 붙이지 마세요."
@@ -160,43 +170,54 @@ def _parse_json_or_raise(raw_text: str) -> dict[str, Any]:
 
 
 def _call_gemini(prompt: str) -> dict[str, Any]:
+    global current_key_index, _client
     last_err: Exception | None = None
     
-    # 무료 티어에서 429 에러 방지를 위한 재시도 로직 강화
-    for model_name in (MODEL_NAME, FALLBACK_MODEL):
-        model = genai.GenerativeModel(model_name)
-        for attempt in range(2):  # JSON 파싱 실패 시 1회 재시도
+    max_attempts = max(2, len(API_KEYS))
+
+    for attempt in range(max_attempts):
+        for model_name in (MODEL_NAME, FALLBACK_MODEL):
             try:
-                resp = model.generate_content(prompt)
+                if _client is None:
+                    raise ValueError("Gemini API 키가 설정되지 않았습니다.")
                 
-                # 안전 필터 등으로 인해 텍스트가 비어있을 수 있음
-                if not resp or not resp.text:
+                resp = _client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                )
+                
+                text = resp.text if resp and resp.text else None
+                if not text:
                     print(f"Empty response from {model_name}, possible safety block.")
-                    break # 다음 모델로
+                    continue
 
                 try:
-                    return _parse_json_or_raise(resp.text)
+                    return _parse_json_or_raise(text)
                 except ValueError as ve:
                     if attempt == 0:
                         print(f"JSON Parsing failed for {model_name}, retrying...")
                         time.sleep(1)
                         continue
                     raise ve
+
             except Exception as e:
                 last_err = e
                 err_msg = str(e)
                 print(f"Gemini Error ({model_name}): {err_msg}")
                 
-                if "429" in err_msg:
-                    print(f"Rate limit (429) hit for {model_name}. Waiting 5 seconds...")
-                    time.sleep(5)
-                    break # 다음 모델 시도 (또는 재시도)
+                # 429 에러 시 다음 API 키로 교체
+                if "429" in err_msg and len(API_KEYS) > 1:
+                    current_key_index = (current_key_index + 1) % len(API_KEYS)
+                    _client = genai.Client(api_key=API_KEYS[current_key_index])
+                    print(f"Rate limit (429). Rotating to API Key #{current_key_index + 1}...")
+                    time.sleep(2)
+                    break  # 현재 모델 루프를 빠져나와 새 키로 재시도
                 
                 if attempt == 0:
                     time.sleep(2)
                     continue
                 break
-                
+
     if last_err:
         raise last_err
     raise ValueError("Gemini 호출에 실패했습니다.")
