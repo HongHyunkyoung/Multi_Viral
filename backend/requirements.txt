@@ -1,7 +1,6 @@
 fastapi==0.115.0
 uvicorn==0.30.0
-anthropic>=0.50.0
-httpx==0.27.0
+httpx>=0.28.1,<1.0.0
 pydantic==2.13.3
 youtube-transcript-api==1.2.4
 defusedxml==0.7.1
