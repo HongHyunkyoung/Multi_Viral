@@ -131,33 +131,52 @@ def extract_youtube(url: str) -> str:
                 continue
 
     # 2. 기존 라이브러리 방식 (로컬 환경 또는 API 키 없을 때 폴백)
-    _api = YouTubeTranscriptApi()  # 신버전: 인스턴스 생성 필요
-    
-    try:
-        try:
-            # 신버전: 인스턴스 메서드로 호출, video_id 키워드 인자 사용
-            transcript = _api.fetch(video_id=vid, languages=["ko", "en"])
-        except Exception:
-            try:
-                t_list = _api.list(video_id=vid)
-                try:
-                    transcript = t_list.find_transcript(['ko', 'en']).fetch()
-                except Exception:
-                    transcript = next(iter(t_list)).fetch()
-            except Exception:
-                raise ValueError("사용 가능한 자막이 영상에 없습니다.")
-            
-    except Exception as e:
-        error_msg = str(e)
-        if "blocking requests from your IP" in error_msg or "Too Many Requests" in error_msg:
-             raise ValueError(
-                 "유튜브에서 서버 IP를 차단했습니다. \n"
-                 "1. Render 설정에서 RAPIDAPI_KEY를 설정하거나, \n"
-                 "2. 서버 대신 로컬 환경에서 실행해 주세요."
-             ) from e
-        raise ValueError(f"자막을 가져올 수 없습니다: {error_msg}") from e
+    proxy_url = os.getenv("YOUTUBE_PROXY")
+    cookies_path = os.getenv("YOUTUBE_COOKIES_PATH")
+    proxies = {"https": proxy_url} if proxy_url else None
 
-    # 신버전은 FetchedTranscript 객체(t.text), 구버전은 dict(t["text"]) 모두 처리
+    transcript = None
+    last_error = None
+
+    # 2-1. 구버전 클래스 메서드 방식 시도 (proxies 지원)
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(
+            vid, languages=["ko", "en"], proxies=proxies, cookies=cookies_path
+        )
+    except Exception as e:
+        last_error = e
+
+    # 2-2. 신버전 인스턴스 메서드 방식 시도
+    if transcript is None:
+        try:
+            _api = YouTubeTranscriptApi()
+            transcript = _api.fetch(video_id=vid, languages=["ko", "en"])
+        except Exception as e:
+            last_error = e
+
+    # 2-3. list → find_transcript 방식 시도
+    if transcript is None:
+        try:
+            _api = YouTubeTranscriptApi()
+            t_list = _api.list(video_id=vid)
+            try:
+                transcript = t_list.find_transcript(["ko", "en"]).fetch()
+            except Exception:
+                transcript = next(iter(t_list)).fetch()
+        except Exception as e:
+            last_error = e
+
+    if transcript is None:
+        error_msg = str(last_error) if last_error else "알 수 없는 오류"
+        if "blocking requests from your IP" in error_msg or "Too Many Requests" in error_msg:
+            raise ValueError(
+                "유튜브에서 서버 IP를 차단했습니다. \n"
+                "1. Render 설정에서 RAPIDAPI_KEY를 설정하거나, \n"
+                "2. 서버 대신 로컬 환경에서 실행해 주세요."
+            ) from last_error
+        raise ValueError(f"자막을 가져올 수 없습니다: {error_msg}") from last_error
+
+    # FetchedTranscript 객체(t.text), dict(t["text"]) 모두 처리
     def _snippet_text(t) -> str:
         if hasattr(t, "text"):
             return t.text
