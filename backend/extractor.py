@@ -39,21 +39,43 @@ def extract_content(url: str) -> tuple[str, str]:
 def extract_naver_blog(url: str) -> str:
     # blog.naver.com/userid/postno → m.blog.naver.com/userid/postno
     mobile_url = url.replace("://blog.naver.com", "://m.blog.naver.com")
+
+    # 모바일 URL 시도 → 실패 시 원본 URL 시도
+    html = None
+    for try_url in [mobile_url, url]:
+        try:
+            resp = requests.get(try_url, headers=_HEADERS, timeout=20)
+            resp.raise_for_status()
+            html = resp.text
+            break
+        except Exception:
+            continue
+
+    if not html:
+        raise ValueError("네이버 블로그를 가져올 수 없습니다.")
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    # 다양한 레이아웃 대응 (스마트에디터3 / 구버전 / 모바일)
+    container = (
+        soup.find(class_="se-main-container")    # 스마트에디터 3
+        or soup.find(class_="post-view")          # 구버전 에디터
+        or soup.find(class_="se_component_wrap")  # 일부 구버전
+        or soup.find(class_="post_ct")            # 모바일 구버전
+        or soup.find(id="postViewArea")           # 아주 구버전
+        or soup.find(class_="view")               # 기타 레이아웃
+    )
+
+    if container:
+        text = container.get_text(separator="\n").strip()
+        if len(text) >= 100:
+            return text[:4000]
+
+    # 컨테이너 못 찾거나 텍스트 부족 시 → newspaper3k로 폴백
     try:
-        resp = requests.get(mobile_url, headers=_HEADERS, timeout=20)
-        resp.raise_for_status()
-    except Exception as e:
-        raise ValueError("네이버 블로그를 가져올 수 없습니다.") from e
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-    container = soup.find(class_="se-main-container") or soup.find(class_="post-view")
-    if not container:
+        return extract_blog(url)
+    except Exception:
         raise ValueError("본문을 추출할 수 없는 페이지입니다.")
-
-    text = container.get_text(separator="\n").strip()
-    if len(text) < 100:
-        raise ValueError("본문을 추출할 수 없는 페이지입니다.")
-    return text[:4000]
 
 
 def extract_naver_news(url: str) -> str:

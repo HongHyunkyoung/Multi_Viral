@@ -177,52 +177,58 @@ def _parse_json_or_raise(raw_text: str) -> dict[str, Any]:
 def _call_gemini(prompt: str) -> dict[str, Any]:
     global current_key_index, _client
     last_err: Exception | None = None
-    
-    max_attempts = max(2, len(API_KEYS))
 
-    for attempt in range(max_attempts):
-        for model_name in (MODEL_NAME, FALLBACK_MODEL):
+    # 전체 시도 횟수: 키 수 * 2 (각 키당 메인+폴백 모델)
+    total_attempts = max(4, len(API_KEYS) * 2)
+
+    for attempt in range(total_attempts):
+        if _client is None:
+            raise ValueError("Gemini API 키가 설정되지 않았습니다.")
+
+        # attempt 짝수 → 메인 모델, 홀수 → 폴백 모델
+        model_name = MODEL_NAME if attempt % 2 == 0 else FALLBACK_MODEL
+
+        try:
+            print(f"[Attempt {attempt+1}] Key #{current_key_index+1}, Model: {model_name}")
+            resp = _client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
+
+            text = resp.text if resp and resp.text else None
+            if not text:
+                print(f"Empty response from {model_name}, possible safety block.")
+                continue
+
             try:
-                if _client is None:
-                    raise ValueError("Gemini API 키가 설정되지 않았습니다.")
-                
-                resp = _client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                )
-                
-                text = resp.text if resp and resp.text else None
-                if not text:
-                    print(f"Empty response from {model_name}, possible safety block.")
-                    continue
+                return _parse_json_or_raise(text)
+            except ValueError as ve:
+                print(f"JSON Parsing failed for {model_name}, retrying...")
+                time.sleep(1)
+                continue
 
-                try:
-                    return _parse_json_or_raise(text)
-                except ValueError as ve:
-                    if attempt == 0:
-                        print(f"JSON Parsing failed for {model_name}, retrying...")
-                        time.sleep(1)
-                        continue
-                    raise ve
+        except Exception as e:
+            last_err = e
+            err_msg = str(e)
+            print(f"Gemini Error (Key #{current_key_index+1}, {model_name}): {err_msg}")
 
-            except Exception as e:
-                last_err = e
-                err_msg = str(e)
-                print(f"Gemini Error ({model_name}): {err_msg}")
-                
-                # 429 에러 시 다음 API 키로 교체
-                if "429" in err_msg and len(API_KEYS) > 1:
+            # 429 에러 시 다음 키로 즉시 교체 후 재시도
+            if "429" in err_msg:
+                if len(API_KEYS) > 1:
                     current_key_index = (current_key_index + 1) % len(API_KEYS)
                     _client = genai.Client(api_key=API_KEYS[current_key_index])
                     print(f"Rate limit (429). Rotating to API Key #{current_key_index + 1}...")
                     time.sleep(2)
-                    break  # 현재 모델 루프를 빠져나와 새 키로 재시도
-                
-                if attempt == 0:
-                    time.sleep(2)
+                    continue  # 새 키로 즉시 재시도
+                else:
+                    # 키가 1개뿐이면 잠시 대기 후 재시도
+                    print("429 but only 1 key. Waiting 5s before retry...")
+                    time.sleep(5)
                     continue
-                break
+
+            time.sleep(2)
 
     if last_err:
         raise last_err
     raise ValueError("Gemini 호출에 실패했습니다.")
+
