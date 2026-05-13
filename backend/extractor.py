@@ -12,7 +12,11 @@ except ImportError:
     HAS_NEWSPAPER = False
 
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
+try:
+    from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
+except ImportError:
+    NoTranscriptFound = Exception
+    TranscriptsDisabled = Exception
 
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -113,51 +117,48 @@ def extract_youtube(url: str) -> str:
     api_key = os.getenv("RAPIDAPI_KEY")
     if api_key:
         rapid_url = "https://youtube-transcriptor.p.rapidapi.com/transcript"
-        headers = {
+        rapid_headers = {
             "x-rapidapi-key": api_key,
             "x-rapidapi-host": "youtube-transcriptor.p.rapidapi.com",
-            "Content-Type": "application/json"
         }
-        
-        # 한국어 -> 영어 순으로 시도
+
+        rapid_success = False
         for lang in ["ko", "en"]:
             try:
-                resp = requests.get(rapid_url, headers=headers, params={"video_id": vid, "lang": lang}, timeout=15)
+                resp = requests.get(rapid_url, headers=rapid_headers, params={"video_id": vid, "lang": lang}, timeout=15)
+                if resp.status_code == 429:
+                    # 월간 할당량 초과 → 더 이상 시도 무의미
+                    raise ValueError(
+                        "RapidAPI 월간 요청 한도가 초과되었습니다.\n"
+                        "RapidAPI 대시보드에서 플랜을 업그레이드하거나, "
+                        "다음 달 갱신을 기다려주세요.\n"
+                        "(https://rapidapi.com/benrhzala90/api/youtube-transcriptor)"
+                    )
                 if resp.status_code == 200:
                     data = resp.json()
                     if isinstance(data, list) and len(data) > 0:
+                        rapid_success = True
                         return " ".join(item.get("text", "") for item in data).strip()[:4000]
+            except ValueError:
+                raise  # 할당량 초과 에러는 그대로 전파
             except Exception:
                 continue
 
-    # 2. 기존 라이브러리 방식 (로컬 환경 또는 API 키 없을 때 폴백)
-    proxy_url = os.getenv("YOUTUBE_PROXY")
-    cookies_path = os.getenv("YOUTUBE_COOKIES_PATH")
-    proxies = {"https": proxy_url} if proxy_url else None
-
+    # 2. youtube-transcript-api 라이브러리 폴백 (로컬 환경 전용)
+    # Render 등 배포 서버에서는 YouTube IP 차단으로 동작하지 않을 수 있음
     transcript = None
     last_error = None
+    _api = YouTubeTranscriptApi()
 
-    # 2-1. 구버전 클래스 메서드 방식 시도 (proxies 지원)
+    # 2-1. fetch() - ko/en 우선 시도
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(
-            vid, languages=["ko", "en"], proxies=proxies, cookies=cookies_path
-        )
+        transcript = _api.fetch(video_id=vid, languages=["ko", "en"])
     except Exception as e:
         last_error = e
 
-    # 2-2. 신버전 인스턴스 메서드 방식 시도
+    # 2-2. list() → 사용 가능한 첫 번째 자막으로 폴백
     if transcript is None:
         try:
-            _api = YouTubeTranscriptApi()
-            transcript = _api.fetch(video_id=vid, languages=["ko", "en"])
-        except Exception as e:
-            last_error = e
-
-    # 2-3. list → find_transcript 방식 시도
-    if transcript is None:
-        try:
-            _api = YouTubeTranscriptApi()
             t_list = _api.list(video_id=vid)
             try:
                 transcript = t_list.find_transcript(["ko", "en"]).fetch()
@@ -170,9 +171,9 @@ def extract_youtube(url: str) -> str:
         error_msg = str(last_error) if last_error else "알 수 없는 오류"
         if "blocking requests from your IP" in error_msg or "Too Many Requests" in error_msg:
             raise ValueError(
-                "유튜브에서 서버 IP를 차단했습니다. \n"
-                "1. Render 설정에서 RAPIDAPI_KEY를 설정하거나, \n"
-                "2. 서버 대신 로컬 환경에서 실행해 주세요."
+                "유튜브에서 서버 IP를 차단했습니다.\n"
+                "배포 환경에서는 RAPIDAPI_KEY 설정이 필요합니다.\n"
+                "현재 RapidAPI 할당량을 확인하거나 플랜을 업그레이드해주세요."
             ) from last_error
         raise ValueError(f"자막을 가져올 수 없습니다: {error_msg}") from last_error
 
