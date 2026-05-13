@@ -95,11 +95,12 @@ def generate(payload: GenerateRequest, request: Request) -> dict:
         raise HTTPException(status_code=500, detail={"error": "GEMINI_FAILED", "message": str(e)}) from e
 
     platform_posts = chain_result["platform_posts"]
+    title = chain_result.get("title", "") or ""
 
     response = {
         "cache_hit": False,
         "source_type": source_type,
-        "title": "",
+        "title": title,
         "platform_posts": platform_posts,
         "processing_time_ms": int((time.time() - started) * 1000),
     }

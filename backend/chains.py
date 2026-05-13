@@ -40,6 +40,7 @@ ANALYZER_PROMPT = """
 당신은 SNS 바이럴 콘텐츠 전문가입니다.
 아래 콘텐츠에서 다음을 추출하여 JSON으로만 반환하세요. {json_only}
 
+0. title: 이 콘텐츠의 제목 (원문 제목이 있으면 그대로, 없으면 핵심 주제 15자 이내 요약)
 1. core_insights: 핵심 인사이트 3가지 (각 1문장, 구체적 수치 포함 우선)
 2. emotional_hook: 독자의 감정을 자극하는 포인트 (공포/희망/놀라움/분노 중 택1 + 이유)
 3. target_persona: 이 콘텐츠가 가장 가치 있을 페르소나 (직군, 관심사, 고민)
@@ -129,7 +130,11 @@ def run_chain(raw_content: str) -> dict[str, Any]:
             elif platform == "instagram":
                 res["estimated_reach"] = "HIGH" if res.get("viral_score", 0) >= 80 else "MEDIUM"
 
-    return {"structured_insight": structured_insight, "platform_posts": combined_result}
+    return {
+        "title": structured_insight.get("title", ""),
+        "structured_insight": structured_insight,
+        "platform_posts": combined_result,
+    }
 
 
 def _parse_json_or_raise(raw_text: str) -> dict[str, Any]:
