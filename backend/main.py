@@ -87,6 +87,9 @@ def generate(payload: GenerateRequest, request: Request) -> dict:
             status_code=500, detail={"error": "EXTRACTION_FAILED", "message": "콘텐츠를 가져올 수 없습니다."}
         ) from e
 
+    if not raw_content or not raw_content.strip():
+        raise HTTPException(status_code=422, detail={"error": "EXTRACTION_FAILED", "message": "콘텐츠를 추출할 수 없습니다. 자막이 없거나 비공개 영상일 수 있습니다."})
+
     try:
         logger.info(f"Running Gemini chain for content (length: {len(raw_content)})")
         chain_result = run_chain(raw_content)

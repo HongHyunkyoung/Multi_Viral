@@ -149,18 +149,30 @@ def extract_youtube(url: str) -> str:
             try:
                 resp = requests.get(rapid_url, headers=rapid_headers, params={"video_id": vid, "lang": lang}, timeout=15)
                 if resp.status_code == 429:
-                    # 월간 할당량 초과 → 더 이상 시도 무의미
                     raise ValueError(
                         "RapidAPI 월간 요청 한도가 초과되었습니다.\n"
                         "RapidAPI 대시보드에서 플랜을 업그레이드하거나, "
                         "다음 달 갱신을 기다려주세요.\n"
                         "(https://rapidapi.com/benrhzala90/api/youtube-transcriptor)"
                     )
+                if resp.status_code in (401, 403):
+                    raise ValueError(
+                        f"RapidAPI 인증 실패 (HTTP {resp.status_code}).\n"
+                        "RAPIDAPI_KEY가 올바른지, 플랜이 활성화되어 있는지 확인해주세요."
+                    )
+                if resp.status_code != 200:
+                    continue
                 if resp.status_code == 200:
                     data = resp.json()
                     if isinstance(data, list) and len(data) > 0:
-                        rapid_success = True
-                        return " ".join(item.get("text", "") for item in data).strip()[:4000]
+                        first = data[0]
+                        # 응답 구조: [{"transcription": [{"subtitle": "...", ...}], ...}]
+                        transcription = first.get("transcription") if isinstance(first, dict) else None
+                        if transcription:
+                            rapid_success = True
+                            result = " ".join(item.get("subtitle", "") for item in transcription).strip()[:4000]
+                            if result:
+                                return result
             except ValueError:
                 raise  # 할당량 초과 에러는 그대로 전파
             except Exception:
@@ -205,7 +217,10 @@ def extract_youtube(url: str) -> str:
             return t.text
         return t.get("text", "")
 
-    return " ".join(_snippet_text(t) for t in transcript).strip()[:4000]
+    result = " ".join(_snippet_text(t) for t in transcript).strip()[:4000]
+    if not result:
+        raise ValueError("자막 데이터가 비어있습니다. 자막이 없는 영상이거나 해당 언어(ko/en) 자막을 지원하지 않습니다.")
+    return result
 
 
 def extract_blog(url: str) -> str:
